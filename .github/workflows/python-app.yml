@@ -3,7 +3,7 @@ name: Build and Release ScoopUI Executable
 on:
   push:
     branches:
-      - main # Or your primary branch, e.g., master
+      - master # Or your primary branch, e.g., master
     tags:
       - 'v*' # Trigger on version tags like v1.0, v1.2.3
   workflow_dispatch: # Allows manual triggering from the Actions tab
@@ -31,11 +31,7 @@ jobs:
 
       - name: Build executable with PyInstaller
         run: |
-          pyinstaller --name ScoopUI ^
-            --onefile ^
-            --windowed ^
-            --icon=assets/icon.ico ^
-            main.py
+          pyinstaller --onefile --windowed --name ScoopUI main.py 
           # Notes:
           #   --name ScoopUI: Defines the output executable name (ScoopUI.exe).
           #   --onefile: Bundles everything into a single executable.
