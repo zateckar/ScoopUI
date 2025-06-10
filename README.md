@@ -4,6 +4,7 @@ A graphical user interface (GUI) for managing Scoop, the command-line installer 
 
 ![{7075F18D-B871-44EE-A3CD-9174AA2BC714}](https://github.com/user-attachments/assets/75d9fa98-6c22-4960-b40a-b2663984da66)
 
+To make exe: "pyinstaller --onefile --windowed --name ScoopUI main.py"
 
 ## Features
 
