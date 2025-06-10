@@ -1,0 +1,65 @@
+name: Build and Release ScoopUI Executable
+
+on:
+  push:
+    branches:
+      - main # Or your primary branch, e.g., master
+    tags:
+      - 'v*' # Trigger on version tags like v1.0, v1.2.3
+  workflow_dispatch: # Allows manual triggering from the Actions tab
+
+jobs:
+  build-and-release:
+    name: Build and Release Executable
+    runs-on: windows-latest # Scoop and the target app are for Windows
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10' # You can choose a specific Python version
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller hidpi-tk
+          # If you create a requirements.txt, you can use:
+          # pip install -r requirements.txt
+
+      - name: Build executable with PyInstaller
+        run: |
+          pyinstaller --name ScoopUI ^
+            --onefile ^
+            --windowed ^
+            --icon=assets/icon.ico ^
+            main.py
+          # Notes:
+          #   --name ScoopUI: Defines the output executable name (ScoopUI.exe).
+          #   --onefile: Bundles everything into a single executable.
+          #   --windowed: Prevents a console window from appearing (for GUI applications).
+          #   --icon=assets/icon.ico: Optional. To add an icon:
+          #                           1. Create an 'assets' folder in your repository.
+          #                           2. Place an 'icon.ico' file inside it.
+          #                           If you don't have an icon, remove the '--icon=assets/icon.ico ^' line.
+          #   main.py: Your main Python script.
+
+      - name: Create Release and Upload Asset (on tag push)
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/') # Only run this step for tag pushes
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            Automated release of ScoopUI.
+            Executable for Windows attached.
+          files: dist/ScoopUI.exe # PyInstaller output directory
+
+      - name: Upload Executable as Artifact (for non-tag pushes)
+        uses: actions/upload-artifact@v4
+        if: "!startsWith(github.ref, 'refs/tags/')" # Only run for non-tag pushes/manual runs on branches
+        with:
+          name: ScoopUI-windows-executable
+          path: dist/ScoopUI.exe
