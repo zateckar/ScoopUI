@@ -51,7 +51,7 @@ jobs:
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.repository.updated_at}}
+          tag_name: ${{ github.event.head_commit.timestamp }}
           files: dist/ScoopUI.exe # Path to the executable to upload
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is automatically provided by GitHub
