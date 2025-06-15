@@ -5,6 +5,17 @@ import subprocess
 import re # For removing ANSI escape codes
 import threading
 
+# --- Dark Mode Color Palette ---
+COLOR_DARK_BG = "#2B2B2B"  # Main background
+COLOR_DARK_FG = "#D3D3D3"  # Main foreground (text)
+COLOR_DARK_ENTRY_BG = "#3C3C3C"  # Background for Entry, Listbox-like widgets
+COLOR_DARK_BUTTON_BG = "#555555"  # Button background
+COLOR_DARK_BUTTON_FG = "#FFFFFF"  # Button text
+COLOR_DARK_SELECT_BG = "#0078D7"  # Background for selected items
+COLOR_DARK_SELECT_FG = "#FFFFFF"  # Foreground for selected items
+COLOR_DARK_TREEVIEW_HEADING_BG = "#4A4A4A" # Background for Treeview headings
+COLOR_DARK_DISABLED_FG = "#888888" # Foreground for disabled text/widgets
+
 # Function to remove ANSI escape codes
 def remove_ansi_codes(text):
     """Removes ANSI escape codes from a string."""
@@ -55,12 +66,18 @@ def _execute_scoop_action_with_modal_output(command_parts, parent_window, status
     dialog = tk.Toplevel(parent_window)
     dialog.title(dialog_title)
     dialog.geometry("700x450")
-    dialog.transient(parent_window)
-    dialog.configure(bg=parent_window.cget('bg')) # Match parent background
-    
-    output_display = scrolledtext.ScrolledText(dialog, wrap=tk.WORD, height=20, state=tk.DISABLED)
-    output_display.pack(padx=10, pady=10, expand=True, fill=tk.BOTH)
+    dialog.transient(parent_window) # Keep dialog on top of parent
+    dialog.configure(bg=COLOR_DARK_BG)
 
+    output_display = scrolledtext.ScrolledText(
+        dialog, wrap=tk.WORD, height=20, state=tk.DISABLED,
+        bg=COLOR_DARK_ENTRY_BG, fg=COLOR_DARK_FG,
+        insertbackground=COLOR_DARK_FG, # Cursor color
+        selectbackground=COLOR_DARK_SELECT_BG,
+        selectforeground=COLOR_DARK_SELECT_FG,
+        relief=tk.FLAT, borderwidth=1
+    )
+    output_display.pack(padx=10, pady=10, expand=True, fill=tk.BOTH)
     dialog.grab_set() # Make modal
 
     try:
@@ -84,7 +101,7 @@ def _execute_scoop_action_with_modal_output(command_parts, parent_window, status
         # Progress bar and label
         progress_frame = ttk.Frame(dialog)
         progress_frame.pack(fill=tk.X, padx=10, pady=(0,5))
-        progress_label = ttk.Label(progress_frame, text="Running...")
+        progress_label = ttk.Label(progress_frame, text="Running...", style="Dark.TLabel") # Apply style if defined
         progress_label.pack(side=tk.LEFT, padx=(0,5))
         # progress_bar = ttk.Progressbar(progress_frame, mode='indeterminate', length=200) # Optional: if you want a visual bar
         # progress_bar.pack(side=tk.LEFT, expand=True, fill=tk.X)
@@ -132,7 +149,14 @@ def _execute_scoop_action_with_modal_output(command_parts, parent_window, status
             # Add close button if not already there
             has_close_button = any(isinstance(child, tk.Button) and child.cget("text") == "Close" for child in dialog.winfo_children())
             if not has_close_button:
-                tk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=5)
+                close_button = tk.Button(
+                    dialog, text="Close", command=dialog.destroy,
+                    bg=COLOR_DARK_BUTTON_BG, fg=COLOR_DARK_BUTTON_FG,
+                    activebackground=COLOR_DARK_SELECT_BG, activeforeground=COLOR_DARK_SELECT_FG,
+                    relief=tk.FLAT, borderwidth=1
+                )
+                close_button.pack(pady=5)
+
         
         # Update main status bar after the modal operation is essentially complete
         if status_label and status_label.winfo_exists():
@@ -156,16 +180,41 @@ class ScoopUI:
     def __init__(self, root_window):
         self.root = root_window
         self.root.title("Scoop UI Interface")
-        self.root.geometry("850x750") # Increased height for listbox
+        self.root.geometry("650x650") # Increased height for listbox
+        self.root.configure(bg=COLOR_DARK_BG)
 
         # Apply a theme
         style = ttk.Style()
         # print(style.theme_names()) # To see available themes
-        style.theme_use('xpnative') # Or 'xpnative', 'clam', 'alt', 'default', 'classic' - 'vista' or 'xpnative' often good on Windows
+        style.theme_use('clam') # 'clam' is often a good base for custom theming
+
+        # --- Configure ttk styles for Dark Mode ---
+        style.configure('.', background=COLOR_DARK_BG, foreground=COLOR_DARK_FG, bordercolor=COLOR_DARK_FG)
+        style.configure('TFrame', background=COLOR_DARK_BG)
+        style.configure('TLabel', background=COLOR_DARK_BG, foreground=COLOR_DARK_FG)
+        style.configure('Dark.TLabel', background=COLOR_DARK_BG, foreground=COLOR_DARK_FG) # For progress_label in modal
+
+        style.configure('TButton', background=COLOR_DARK_BUTTON_BG, foreground=COLOR_DARK_BUTTON_FG,
+                        relief=tk.FLAT, borderwidth=1, focusthickness=0, padding=5)
+        style.map('TButton',
+                  background=[('active', COLOR_DARK_SELECT_BG), ('pressed', COLOR_DARK_SELECT_BG)],
+                  foreground=[('active', COLOR_DARK_SELECT_FG), ('pressed', COLOR_DARK_SELECT_FG)])
+
+        style.configure('TEntry', fieldbackground=COLOR_DARK_ENTRY_BG, foreground=COLOR_DARK_FG,
+                        insertcolor=COLOR_DARK_FG, relief=tk.FLAT, borderwidth=1)
+
+        style.configure('Treeview', background=COLOR_DARK_ENTRY_BG, fieldbackground=COLOR_DARK_ENTRY_BG, foreground=COLOR_DARK_FG)
+        style.map('Treeview', background=[('selected', COLOR_DARK_SELECT_BG)], foreground=[('selected', COLOR_DARK_SELECT_FG)])
+        style.configure('Treeview.Heading', background=COLOR_DARK_TREEVIEW_HEADING_BG, foreground=COLOR_DARK_FG, relief="flat", padding=5)
+        style.map('Treeview.Heading', background=[('active', COLOR_DARK_SELECT_BG)])
+
+        style.configure('TNotebook', background=COLOR_DARK_BG, borderwidth=0)
+        style.configure('TNotebook.Tab', background=COLOR_DARK_BUTTON_BG, foreground=COLOR_DARK_FG, padding=[8, 4], relief=tk.FLAT, borderwidth=0)
+        style.map('TNotebook.Tab', background=[('selected', COLOR_DARK_BG)], foreground=[('selected', 'white')])
         
         # --- Main Tabbed Interface ---
         self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(expand=True, fill='both', padx=10, pady=10)
+        self.notebook.pack(expand=True, fill='both', padx=5, pady=5)
 
         # --- Updates Tab ---
         self.updates_tab = ttk.Frame(self.notebook)
@@ -182,7 +231,7 @@ class ScoopUI:
         self.status_label.pack(side=tk.BOTTOM, fill=tk.X)
 
         # Optionally, load updates when the app starts or when tab is first selected
-        # self.manage_updates() # To load updates on startup
+        self.manage_updates() # To load updates on startup
         # self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
         
     def _create_search_tab_widgets(self, parent_frame):
@@ -219,11 +268,11 @@ class ScoopUI:
 
         # Define column headings and widths for search results
         self.search_results_treeview.heading('name', text='Name', anchor=tk.W)
-        self.search_results_treeview.column('name', width=300, minwidth=150, stretch=tk.YES)
+        self.search_results_treeview.column('name', width=200, minwidth=100, stretch=tk.YES)
         self.search_results_treeview.heading('version', text='Version', anchor=tk.W)
-        self.search_results_treeview.column('version', width=150, minwidth=100, stretch=tk.YES)
+        self.search_results_treeview.column('version', width=100, minwidth=50, stretch=tk.YES)
         self.search_results_treeview.heading('source', text='Source', anchor=tk.W)
-        self.search_results_treeview.column('source', width=150, minwidth=100, stretch=tk.YES)
+        self.search_results_treeview.column('source', width=100, minwidth=50, stretch=tk.YES)
 
         self.search_action_buttons_frame = ttk.Frame(list_display_frame)
         self.search_action_buttons_frame.pack(fill=tk.X, pady=(5,0))
@@ -238,7 +287,7 @@ class ScoopUI:
         updates_top_actions_frame = ttk.Frame(parent_frame, padding=(0,10,0,5))
         updates_top_actions_frame.pack(fill=tk.X, padx=10, pady=(10,0), anchor=tk.N)
         self.refresh_updates_button = ttk.Button(updates_top_actions_frame, text="Refresh Update List", command=self.manage_updates)
-        self.refresh_updates_button.pack(side=tk.LEFT, pady=5)
+        self.refresh_updates_button.pack(side=tk.LEFT)
 
         # List Display Frame for Updates
         list_display_frame = ttk.Frame(parent_frame, padding=5)
@@ -264,11 +313,11 @@ class ScoopUI:
 
         # Define column headings and widths for updates
         self.updates_treeview.heading('app_name', text='Application Name', anchor=tk.W)
-        self.updates_treeview.column('app_name', width=300, minwidth=150, stretch=tk.YES)
+        self.updates_treeview.column('app_name', width=200, minwidth=100, stretch=tk.YES)
         self.updates_treeview.heading('current_ver', text='Current Version', anchor=tk.W)
-        self.updates_treeview.column('current_ver', width=150, minwidth=100, stretch=tk.YES)
+        self.updates_treeview.column('current_ver', width=100, minwidth=30, stretch=tk.YES)
         self.updates_treeview.heading('new_ver', text='New Version', anchor=tk.W)
-        self.updates_treeview.column('new_ver', width=150, minwidth=100, stretch=tk.YES)
+        self.updates_treeview.column('new_ver', width=100, minwidth=30, stretch=tk.YES)
         
         self.updates_action_buttons_frame = ttk.Frame(list_display_frame)
         self.updates_action_buttons_frame.pack(fill=tk.X, pady=(5,0))
