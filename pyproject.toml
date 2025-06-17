@@ -1,6 +1,6 @@
 [project]
 name = "scoop"
-version = "0.2.0"
+version = "1.1.1"
 description = "Scoop UI"
 readme = "README.md"
 requires-python = ">=3.13"

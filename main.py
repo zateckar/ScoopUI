@@ -103,9 +103,9 @@ def _execute_scoop_action_with_modal_output(command_parts, parent_window, status
         progress_frame.pack(fill=tk.X, padx=10, pady=(0,5))
         progress_label = ttk.Label(progress_frame, text="Running...", style="Dark.TLabel") # Apply style if defined
         progress_label.pack(side=tk.LEFT, padx=(0,5))
-        # progress_bar = ttk.Progressbar(progress_frame, mode='indeterminate', length=200) # Optional: if you want a visual bar
-        # progress_bar.pack(side=tk.LEFT, expand=True, fill=tk.X)
-        # progress_bar.start(10)
+        progress_bar = ttk.Progressbar(progress_frame, mode='indeterminate', length=200) # Optional: if you want a visual bar
+        progress_bar.pack(side=tk.LEFT, expand=True, fill=tk.X)
+        progress_bar.start(10)
 
         for line in process.stdout:
             if not dialog.winfo_exists(): break
@@ -137,12 +137,12 @@ def _execute_scoop_action_with_modal_output(command_parts, parent_window, status
             output_display.insert(tk.END, f"An unexpected error occurred: {e}\n")
             if 'progress_label' in locals() and progress_label.winfo_exists(): progress_label.config(text="Error: Unexpected!")
     finally:
-        # if 'progress_bar' in locals() and progress_bar.winfo_exists():
-        #     progress_bar.stop()
-        #     progress_bar.pack_forget() # Clean up progress bar
-        # if 'progress_label' in locals() and progress_label.winfo_exists() and not (process.returncode == 0 or "Error" in progress_label.cget("text")):
-        #     # If no specific status was set (e.g. early exit), set a generic one or hide
-        #      progress_label.config(text="Operation ended.")
+        if 'progress_bar' in locals() and progress_bar.winfo_exists():
+            progress_bar.stop()
+            progress_bar.pack_forget() # Clean up progress bar
+        if 'progress_label' in locals() and progress_label.winfo_exists() and not (process.returncode == 0 or "Error" in progress_label.cget("text")):
+            # If no specific status was set (e.g. early exit), set a generic one or hide
+             progress_label.config(text="Operation ended.")
 
         if dialog.winfo_exists():
             output_display.config(state=tk.DISABLED) # Make text read-only
@@ -180,7 +180,7 @@ class ScoopUI:
     def __init__(self, root_window):
         self.root = root_window
         self.root.title("Scoop UI Interface")
-        self.root.geometry("650x650") # Increased height for listbox
+        self.root.geometry("750x750") # Increased height for listbox
         self.root.configure(bg=COLOR_DARK_BG)
 
         # Apply a theme
@@ -203,10 +203,10 @@ class ScoopUI:
         style.configure('TEntry', fieldbackground=COLOR_DARK_ENTRY_BG, foreground=COLOR_DARK_FG,
                         insertcolor=COLOR_DARK_FG, relief=tk.FLAT, borderwidth=1)
 
-        style.configure('Treeview', background=COLOR_DARK_ENTRY_BG, fieldbackground=COLOR_DARK_ENTRY_BG, foreground=COLOR_DARK_FG)
+        style.configure('Treeview', background=COLOR_DARK_ENTRY_BG, fieldbackground=COLOR_DARK_ENTRY_BG, foreground=COLOR_DARK_FG, font=('Segoe UI', 10))
         style.map('Treeview', background=[('selected', COLOR_DARK_SELECT_BG)], foreground=[('selected', COLOR_DARK_SELECT_FG)])
-        style.configure('Treeview.Heading', background=COLOR_DARK_TREEVIEW_HEADING_BG, foreground=COLOR_DARK_FG, relief="flat", padding=5)
-        style.map('Treeview.Heading', background=[('active', COLOR_DARK_SELECT_BG)])
+        style.configure('Treeview.Heading', background=COLOR_DARK_TREEVIEW_HEADING_BG, foreground=COLOR_DARK_FG, relief="flat", padding=5, font=('Segoe UI', 10))
+        style.map('Treeview.Heading', background=[('active', COLOR_DARK_SELECT_BG)], relief=[('active', 'groove')]) # Added relief for active heading
 
         style.configure('TNotebook', background=COLOR_DARK_BG, borderwidth=0)
         style.configure('TNotebook.Tab', background=COLOR_DARK_BUTTON_BG, foreground=COLOR_DARK_FG, padding=[8, 4], relief=tk.FLAT, borderwidth=0)
@@ -217,21 +217,21 @@ class ScoopUI:
         self.notebook.pack(expand=True, fill='both', padx=5, pady=5)
 
         # --- Updates Tab ---
-        self.updates_tab = ttk.Frame(self.notebook)
-        self.notebook.add(self.updates_tab, text='Manage Apps')
-        self._create_updates_tab_widgets(self.updates_tab)
+        self.manage_apps_tab = ttk.Frame(self.notebook) # Renamed
+        self.notebook.add(self.manage_apps_tab, text='Manage Apps')
+        self._create_manage_apps_tab_widgets(self.manage_apps_tab) # Renamed
         
         # --- Search Tab ---
         self.search_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.search_tab, text='Search Apps')
-        self._create_search_tab_widgets(self.search_tab)
+        self._create_search_tab_widgets(self.search_tab) # No change here, just for context
 
         # --- Status Bar ---
         self.status_label = ttk.Label(self.root, text="Ready", anchor=tk.W, padding=(5, 2))
         self.status_label.pack(side=tk.BOTTOM, fill=tk.X)
 
         # Optionally, load updates when the app starts or when tab is first selected
-        self.manage_updates() # To load updates on startup
+        self.refresh_manage_apps_list() # Renamed: To load apps and updates on startup
         # self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
         
     def _create_search_tab_widgets(self, parent_frame):
@@ -282,50 +282,55 @@ class ScoopUI:
         # Bind double-click to install for search results
         self.search_results_treeview.bind("<Double-1>", lambda event: self._handle_install_selected_from_list())
 
-    def _create_updates_tab_widgets(self, parent_frame):
+    def _create_manage_apps_tab_widgets(self, parent_frame): # Renamed
         # Action Frame for Updates
-        updates_top_actions_frame = ttk.Frame(parent_frame, padding=(0,10,0,5))
-        updates_top_actions_frame.pack(fill=tk.X, padx=10, pady=(10,0), anchor=tk.N)
-        self.refresh_updates_button = ttk.Button(updates_top_actions_frame, text="Refresh Update List", command=self.manage_updates)
-        self.refresh_updates_button.pack(side=tk.LEFT)
+        manage_apps_top_actions_frame = ttk.Frame(parent_frame, padding=(0,10,0,5)) # Renamed
+        manage_apps_top_actions_frame.pack(fill=tk.X, padx=10, pady=(10,0), anchor=tk.N)
+
 
         # List Display Frame for Updates
         list_display_frame = ttk.Frame(parent_frame, padding=5)
         list_display_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        self.updates_list_title_label = ttk.Label(list_display_frame, text="Available Updates:")
-        self.updates_list_title_label.pack(anchor=tk.W, pady=(0,5))
+        self.manage_apps_list_title_label = ttk.Label(list_display_frame, text="Installed Apps & Updates:") # Renamed and text changed
+        self.manage_apps_list_title_label.pack(anchor=tk.W, pady=(0,5))
 
         listbox_container = ttk.Frame(list_display_frame) # Using ttk.Frame for consistency
         listbox_container.pack(fill=tk.BOTH, expand=True)
 
-        self.updates_treeview_scrollbar = ttk.Scrollbar(listbox_container, orient=tk.VERTICAL)
-        self.updates_treeview = ttk.Treeview(
+        self.manage_apps_treeview_scrollbar = ttk.Scrollbar(listbox_container, orient=tk.VERTICAL) # Renamed
+        self.manage_apps_treeview = ttk.Treeview( # Renamed
             listbox_container,
-            columns=('app_name', 'current_ver', 'new_ver'),
+            columns=('app_name', 'current_ver', 'new_ver'), # Updated columns
             show='headings',
-            yscrollcommand=self.updates_treeview_scrollbar.set,
+            yscrollcommand=self.manage_apps_treeview_scrollbar.set, # Renamed
             selectmode='extended'  # Multiple selections
         )
-        self.updates_treeview_scrollbar.config(command=self.updates_treeview.yview)
-        self.updates_treeview_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.updates_treeview.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.manage_apps_treeview_scrollbar.config(command=self.manage_apps_treeview.yview) # Renamed
+        self.manage_apps_treeview_scrollbar.pack(side=tk.RIGHT, fill=tk.Y) # Renamed
+        self.manage_apps_treeview.pack(side=tk.LEFT, fill=tk.BOTH, expand=True) # Renamed
 
         # Define column headings and widths for updates
-        self.updates_treeview.heading('app_name', text='Application Name', anchor=tk.W)
-        self.updates_treeview.column('app_name', width=200, minwidth=100, stretch=tk.YES)
-        self.updates_treeview.heading('current_ver', text='Current Version', anchor=tk.W)
-        self.updates_treeview.column('current_ver', width=100, minwidth=30, stretch=tk.YES)
-        self.updates_treeview.heading('new_ver', text='New Version', anchor=tk.W)
-        self.updates_treeview.column('new_ver', width=100, minwidth=30, stretch=tk.YES)
+        self.manage_apps_treeview.heading('app_name', text='Application Name', anchor=tk.W)
+        self.manage_apps_treeview.column('app_name', width=200, minwidth=100, stretch=tk.YES)
+        self.manage_apps_treeview.heading('current_ver', text='Current Version', anchor=tk.W)
+        self.manage_apps_treeview.column('current_ver', width=100, minwidth=30, stretch=tk.YES)
+        self.manage_apps_treeview.heading('new_ver', text='New Version', anchor=tk.W)
+        self.manage_apps_treeview.column('new_ver', width=100, minwidth=30, stretch=tk.YES)
+        # self.manage_apps_treeview.heading('status', text='Status', anchor=tk.W) # Removed column
+        # self.manage_apps_treeview.column('status', width=120, minwidth=50, stretch=tk.YES) # Removed column
         
-        self.updates_action_buttons_frame = ttk.Frame(list_display_frame)
-        self.updates_action_buttons_frame.pack(fill=tk.X, pady=(5,0))
-        self.current_updates_data = []
-        self._setup_updates_list_actions()
+        # Tag for highlighting rows with updates
+        self.UPDATED_APP_TAG = "updated_app_style"
+        self.manage_apps_treeview.tag_configure(self.UPDATED_APP_TAG, font=('Segoe UI', 10, 'bold'))
+
+        self.manage_apps_action_buttons_frame = ttk.Frame(list_display_frame) # Renamed
+        self.manage_apps_action_buttons_frame.pack(fill=tk.X, pady=(5,0))
+        self.current_managed_apps_data = [] # Renamed
+        self._setup_manage_apps_list_actions() # Renamed
 
         # Bind double-click to update for updates list (could be ambiguous if multiple selected, so stick to button)
-        # self.updates_treeview.bind("<Double-1>", lambda event: self._handle_update_selected_from_list())
+        # self.manage_apps_treeview.bind("<Double-1>", lambda event: self._handle_update_selected_from_manage_list())
 
 
     def _setup_search_list_actions(self):
@@ -343,23 +348,24 @@ class ScoopUI:
         self.search_results_treeview.delete(*self.search_results_treeview.get_children())
         self.current_search_results_data = []
         self.search_list_title_label.config(text="Search Results:") # Keep title consistent
-
-    def _setup_updates_list_actions(self):
-        for widget in self.updates_action_buttons_frame.winfo_children():
+    
+    def _setup_manage_apps_list_actions(self): # Renamed
+        for widget in self.manage_apps_action_buttons_frame.winfo_children(): # Renamed
             widget.destroy()
-        # Clearing data is handled by _clear_updates_list
-        # self.current_updates_data = []
-        self.updates_list_title_label.config(text="Available Updates:")
-        ttk.Button(self.updates_action_buttons_frame, text="Update Selected", command=self._handle_update_selected_from_list).pack(side=tk.LEFT, padx=(0,5), pady=5)
-        ttk.Button(self.updates_action_buttons_frame, text="Select All", command=lambda: self.updates_treeview.selection_set(self.updates_treeview.get_children())).pack(side=tk.LEFT, padx=(0,5), pady=5)
-        ttk.Button(self.updates_action_buttons_frame, text="Uninstall Selected", command=self._handle_uninstall_selected_from_updates_list).pack(side=tk.LEFT, padx=(0,5), pady=5)
-        ttk.Button(self.updates_action_buttons_frame, text="Deselect All", command=lambda: self.updates_treeview.selection_remove(self.updates_treeview.get_children())).pack(side=tk.LEFT, padx=(0,5), pady=5)
-        ttk.Button(self.updates_action_buttons_frame, text="Clear List", command=self._clear_updates_list).pack(side=tk.LEFT, padx=(0,5), pady=5)
+        # Clearing data is handled by _clear_manage_apps_list
+        # self.current_managed_apps_data = []
+        self.manage_apps_list_title_label.config(text="Installed Apps & Updates:") # Renamed and text changed
+        ttk.Button(self.manage_apps_action_buttons_frame, text="Refresh List", command=self.refresh_manage_apps_list).pack(side=tk.LEFT, padx=(0,5), pady=5) # Renamed
+        ttk.Button(self.manage_apps_action_buttons_frame, text="Update Selected", command=self._handle_update_selected_from_manage_list).pack(side=tk.LEFT, padx=(0,5), pady=5) # Renamed handler
+        ttk.Button(self.manage_apps_action_buttons_frame, text="Select All", command=lambda: self.manage_apps_treeview.selection_set(self.manage_apps_treeview.get_children())).pack(side=tk.LEFT, padx=(0,5), pady=5) # Renamed treeview
+        ttk.Button(self.manage_apps_action_buttons_frame, text="Uninstall Selected", command=self._handle_uninstall_selected_from_manage_list).pack(side=tk.LEFT, padx=(0,5), pady=5) # Renamed handler
+        ttk.Button(self.manage_apps_action_buttons_frame, text="Deselect All", command=lambda: self.manage_apps_treeview.selection_remove(self.manage_apps_treeview.get_children())).pack(side=tk.LEFT, padx=(0,5), pady=5) # Renamed treeview
+        ttk.Button(self.manage_apps_action_buttons_frame, text="Clear List", command=self._clear_manage_apps_list).pack(side=tk.LEFT, padx=(0,5), pady=5) # Renamed handler
 
-    def _clear_updates_list(self):
-        self.updates_treeview.delete(*self.updates_treeview.get_children())
-        self.current_updates_data = []
-        self.updates_list_title_label.config(text="Available Updates:") # Keep title consistent
+    def _clear_manage_apps_list(self): # Renamed
+        self.manage_apps_treeview.delete(*self.manage_apps_treeview.get_children()) # Renamed
+        self.current_managed_apps_data = [] # Renamed
+        self.manage_apps_list_title_label.config(text="Installed Apps & Updates:") # Renamed and text changed
 
     def get_app_name(self):
         app_name = self.app_name_entry.get().strip()
@@ -373,7 +379,7 @@ class ScoopUI:
         if app_name:
             self.status_label.config(text=f"Searching for '{app_name}'...")
             self._clear_search_results() # Clear previous results
-            # _setup_search_list_actions() is already called at init and ensures buttons are there
+            # _setup_search_list_actions() is called at init and ensures buttons are there
             
             def fetch_and_show_search_results():
                 stdout, stderr, returncode = get_scoop_command_output(['search', app_name])
@@ -440,6 +446,47 @@ class ScoopUI:
                 if name.lower() != 'scoop':
                     results.append({'name': name, 'version': version, 'source': source})
         return results
+
+    def parse_scoop_list_apps(self, list_output):
+        """
+        Parses the output of 'scoop list'.
+        Returns a list of dictionaries: [{'name': str, 'version': str, 'source': str, 'info': str}, ...]
+        """
+        installed_apps = []
+        if not list_output:
+            return installed_apps
+            
+        lines = list_output.strip().split('\n')
+        data_started = False
+        header_skipped = False 
+
+        for line in lines:
+            line = remove_ansi_codes(line).strip()
+            if not line:
+                continue
+
+            if "----" in line and "Name" not in line: 
+                data_started = True
+                header_skipped = False 
+                continue
+
+            if not data_started:
+                continue
+
+            if not header_skipped and ("Name " in line and "Version " in line): 
+                header_skipped = True
+                continue
+            if not header_skipped and data_started : # If data started but header not skipped, this is likely an app line
+                pass # proceed to parse as app line
+
+            parts = line.split(None, 3) # Split max 3 times: Name, Version, Source, Info (rest)
+            if len(parts) >= 2: 
+                name = parts[0]
+                version = parts[1]
+                source = parts[2] if len(parts) >= 3 else "N/A"
+                info = parts[3] if len(parts) >= 4 else "" 
+                installed_apps.append({'name': name, 'version': version, 'source': source, 'info': info.strip()})
+        return installed_apps
 
     # Removed: _show_search_results_dialog (functionality integrated into search_app and main UI)
 
@@ -539,17 +586,17 @@ class ScoopUI:
                         added_app_names.add(app_name) # Add to set to prevent duplicates
         return updates
 
-    def manage_updates(self):
+    def refresh_manage_apps_list(self): # Renamed
         """
-        Fetches scoop status, parses for updates (Scoop & apps), and shows a dialog to manage them.
-        This now includes running 'scoop update' first to refresh metadata.
+        Refreshes the list of installed apps and available updates.
+        Runs 'scoop update' (metadata), 'scoop status' (updates), and 'scoop list' (installed apps).
         """
         # Initial status update on the main thread
-        self.status_label.config(text="Preparing to check for updates...")
-        self._clear_updates_list() # Clear previous update list (UI update, fine on main thread)
-        # _setup_updates_list_actions() is already called at init and ensures buttons are there
+        self.status_label.config(text="Refreshing application list...")
+        self._clear_manage_apps_list() # Renamed: Clear previous list (UI update, fine on main thread)
+        # _setup_manage_apps_list_actions() is called at init and ensures buttons are there
 
-        def _update_task_in_thread(): # This function will run in a separate thread
+        def _refresh_task_in_thread(): # Renamed: This function will run in a separate thread
             # --- Step 1: Run 'scoop update' to refresh metadata ---
             if not self.root.winfo_exists(): return
 
@@ -578,7 +625,7 @@ class ScoopUI:
                                          f"Details: {error_details.strip()}",
                                          parent=self.root)
                     self.status_label.config(text="Ready") # Reset status
-                    self._clear_updates_list() # Clear list area on error
+                    self._clear_manage_apps_list() # Renamed
                 self.root.after(0, _handle_scoop_update_error)
                 return
 
@@ -588,147 +635,209 @@ class ScoopUI:
                 self.status_label.config(text="Fetching app status (scoop status)...") if self.root.winfo_exists() else None
             })
 
-            stdout, stderr, returncode = get_scoop_command_output(['status'])
+            status_stdout, status_stderr, status_returncode = get_scoop_command_output(['status'])
 
-            if not self.root.winfo_exists(): return
+            if not self.root.winfo_exists(): return # Check again after command
 
             # --- Helper for UI updates from this thread ---
             def schedule_ui_update(action):
                 if self.root.winfo_exists():
                     self.root.after(0, action)
 
-            if returncode != 0:
-                def _handle_status_error():
+            if status_returncode != 0:
+                def _handle_scoop_status_error():
                     if not self.root.winfo_exists(): return
                     self.status_label.config(text="Error fetching status.")
-                    messagebox.showerror("Error", f"Failed to get app status: {stderr or stdout or 'Unknown error'}", parent=self.root)
+                    error_details = status_stderr or status_stdout or "Unknown error during 'scoop status'."
+                    messagebox.showerror("Scoop Status Error",
+                                         f"Failed to get app status (scoop status).\n"
+                                         f"Details: {error_details.strip()}",
+                                         parent=self.root)
                     self.status_label.config(text="Ready") # Reset status
-                    self._clear_updates_list() # Clear list area on error
-                schedule_ui_update(_handle_status_error)
+                    self._clear_manage_apps_list() # Renamed
+                schedule_ui_update(_handle_scoop_status_error)
                 return
 
-            if stderr and not stdout: # If only errors, show them
-                schedule_ui_update(lambda: messagebox.showwarning("Scoop Status Warning", f"Scoop status returned errors:\n{stderr}", parent=self.root))
+            if status_stderr and not status_stdout: # If only errors from status, show them
+                schedule_ui_update(lambda: messagebox.showwarning("Scoop Status Warning", f"Scoop status returned warnings/errors:\n{status_stderr}", parent=self.root))
             
-            updates_info = self.parse_scoop_updates_info(stdout)
+            updates_info = self.parse_scoop_updates_info(status_stdout)
+
+            # --- Step 3: Run 'scoop list' and process ---
+            schedule_ui_update(lambda: {
+                self.status_label.config(text="Fetching installed apps (scoop list)...") if self.root.winfo_exists() else None
+            })
+            list_stdout, list_stderr, list_returncode = get_scoop_command_output(['list'])
 
             if not self.root.winfo_exists(): return
 
-            if not updates_info['scoop'] and not updates_info['apps']:
-                def _handle_no_updates():
+            if list_returncode != 0:
+                def _handle_scoop_list_error():
                     if not self.root.winfo_exists(): return
+                    self.status_label.config(text="Error fetching installed apps.")
+                    error_details = list_stderr or list_stdout or "Unknown error during 'scoop list'."
+                    messagebox.showerror("Scoop List Error",
+                                         f"Failed to get installed apps (scoop list).\n"
+                                         f"Details: {error_details.strip()}",
+                                         parent=self.root)
                     self.status_label.config(text="Ready")
-                    messagebox.showinfo("Manage Apps", "No pending updates found for Scoop or applications.", parent=self.root)
-                    self._clear_updates_list()
-                schedule_ui_update(_handle_no_updates)
+                    self._clear_manage_apps_list() # Renamed
+                schedule_ui_update(_handle_scoop_list_error)
                 return
+            
+            installed_apps_parsed = self.parse_scoop_list_apps(list_stdout)
 
-            # Prepare data for listbox (non-UI)
-            update_candidates = []
-            if updates_info['scoop']:
-                s_info = updates_info['scoop']
-                update_candidates.append({
-                    'type': 'scoop',
+            # --- Step 4: Combine data ---
+            managed_apps_candidates = []
+            app_updates_dict = {app['name'].lower(): app for app in updates_info.get('apps', [])}
+            scoop_self_update_info = updates_info.get('scoop')
+
+            if scoop_self_update_info:
+                managed_apps_candidates.append({
                     'name': 'Scoop (Self-Update)', # Display name for Treeview
-                    'current_version': s_info['current'],
-                    'new_version': s_info['new'],
-                    'cmd_parts': ['update'], # 'scoop update' for scoop itself
-                    'original_name': 'scoop' # Actual identifier
+                    'original_name': 'scoop', 
+                    'current_version': scoop_self_update_info['current'],
+                    'new_version': scoop_self_update_info['new'],
+                    'status_text': 'Scoop Update Available',
+                    'has_update': True,
+                    'is_scoop_self': True,
+                    'source_bucket': 'Scoop Core' 
                 })
 
-            for app_info in sorted(updates_info['apps'], key=lambda x: x['name']): # Sort apps by name
-                update_candidates.append({
-                    'type': 'app',
-                    'name': app_info['name'], # Display name for Treeview
-                    'current_version': app_info['current'],
-                    'new_version': app_info['new'],
-                    'cmd_parts': ['update', app_info['name']],
-                    'original_name': app_info['name'] # Actual package name
-                })
+            processed_app_names_lower = set(['scoop'] if scoop_self_update_info else [])
 
-            # Schedule UI update for populating the list and final status
+            for app_data in installed_apps_parsed:
+                original_name = app_data['name']
+                original_name_lower = original_name.lower()
+
+                if original_name_lower in processed_app_names_lower: # Already handled (e.g. 'scoop' package by self-update)
+                    continue
+
+                current_version_from_list = app_data['version']
+                source_bucket = app_data['source']
+                update_details = app_updates_dict.get(original_name_lower)
+
+                if update_details:
+                    managed_apps_candidates.append({
+                        'name': original_name, 'original_name': original_name,
+                        'current_version': update_details['current'], 
+                        'new_version': update_details['new'],
+                        'status_text': 'Update Available', 'has_update': True,
+                        'is_scoop_self': False, 'source_bucket': source_bucket
+                    })
+                else:
+                    managed_apps_candidates.append({
+                        'name': original_name, 'original_name': original_name,
+                        'current_version': current_version_from_list,
+                        'new_version': 'N/A', 
+                        'status_text': 'Installed', 'has_update': False,
+                        'is_scoop_self': False, 'source_bucket': source_bucket
+                    })
+                processed_app_names_lower.add(original_name_lower)
+            
+            # Sort: Scoop self-update first, then apps with updates, then other installed, then by name.
+            def sort_key(app):
+                if app['is_scoop_self']: return (0, app['name'].lower())
+                if app['has_update']: return (1, app['name'].lower())
+                return (2, app['name'].lower())
+            managed_apps_candidates.sort(key=sort_key)
+
+            # --- Step 5: Schedule UI update for populating the list and final status ---
             def _populate_list_and_finalize():
                 if not self.root.winfo_exists(): return
-                self.current_updates_data = update_candidates
-                self.updates_treeview.delete(*self.updates_treeview.get_children())
-                for candidate in update_candidates:
-                    self.updates_treeview.insert('', tk.END, values=(
-                        candidate['name'],
-                        candidate['current_version'],
-                        candidate['new_version']
-                    ))
+                self.current_managed_apps_data = managed_apps_candidates # Renamed
+                self.manage_apps_treeview.delete(*self.manage_apps_treeview.get_children()) # Renamed
+                
+                # Populate the Treeview
+                for app_item in managed_apps_candidates:
+                    item_tags = ()
+                    # Apply bold tag if the app has an update and a new version is specified
+                    if app_item.get('has_update', False) and app_item.get('new_version', 'N/A') != 'N/A':
+                        item_tags = (self.UPDATED_APP_TAG,)
+
+                    self.manage_apps_treeview.insert('', tk.END, values=( # Renamed
+                        app_item['name'],
+                        app_item['current_version'],
+                        app_item['new_version']
+                    ), tags=item_tags)
+
                 self.status_label.config(text="Ready") # Final status
+                if not managed_apps_candidates:
+                    self.manage_apps_list_title_label.config(text="No applications installed or no updates found.")
+                else:
+                    self.manage_apps_list_title_label.config(text="Installed Apps & Updates:")
             schedule_ui_update(_populate_list_and_finalize)
 
-        thread = threading.Thread(target=_update_task_in_thread)
+        thread = threading.Thread(target=_refresh_task_in_thread) # Renamed
         thread.daemon = True
         thread.start()
 
-    def _handle_update_selected_from_list(self):
-        if not self.current_updates_data: # Check if there's data to select from
-            messagebox.showwarning("No Updates Listed", "No updates available in the list to select.", parent=self.root)
+    def _handle_update_selected_from_manage_list(self): # Renamed
+        if not self.current_managed_apps_data: # Renamed
+            messagebox.showwarning("No Items Listed", "No items available in the list to select.", parent=self.root)
             return
-        selected_iids = self.updates_treeview.selection()
+        selected_iids = self.manage_apps_treeview.selection() # Renamed
             
         scoop_self_update_selected = False
-        selected_app_names_for_message = []
-        selected_app_original_names_for_command = []
+        apps_to_update_display_names = []
+        apps_to_update_original_names = []
 
         for iid in selected_iids:
-            idx = self.updates_treeview.index(iid)
-            candidate = self.current_updates_data[idx]
-            if candidate['type'] == 'scoop':
+            idx = self.manage_apps_treeview.index(iid) # Renamed
+            candidate = self.current_managed_apps_data[idx] # Renamed
+            
+            if candidate['is_scoop_self'] and candidate['has_update']:
                 scoop_self_update_selected = True
-            elif candidate['type'] == 'app':
-                selected_app_names_for_message.append(candidate['name']) # Display name for message
-                selected_app_original_names_for_command.append(candidate['original_name']) # Actual name for command
+            elif not candidate['is_scoop_self'] and candidate['has_update']:
+                apps_to_update_original_names.append(candidate['original_name'])
+                apps_to_update_display_names.append(candidate['name'])
         
-        if not scoop_self_update_selected and not selected_app_names_for_message:
-            messagebox.showwarning("No Selection", "Please select Scoop or at least one app to update.", parent=self.root)
+        if not scoop_self_update_selected and not apps_to_update_original_names:
+            messagebox.showwarning("No Actionable Selection", "Please select Scoop or app(s) with available updates.", parent=self.root)
             return
 
         confirm_message_parts = []
         if scoop_self_update_selected:
             confirm_message_parts.append("Scoop itself")
-        if selected_app_names_for_message:
-            confirm_message_parts.append(f"{len(selected_app_names_for_message)} app(s): {', '.join(selected_app_names_for_message)}")
+        if apps_to_update_display_names:
+            confirm_message_parts.append(f"{len(apps_to_update_display_names)} app(s): {', '.join(apps_to_update_display_names)}")
 
         full_confirm_message = "Are you sure you want to update:\n- " + "\n- ".join(confirm_message_parts)
 
         if messagebox.askyesno("Confirm Update", full_confirm_message, parent=self.root):
             if scoop_self_update_selected:
                 run_scoop_command_threaded(['update'], self.status_label, self.root) # This updates scoop itself
-            if selected_app_original_names_for_command:
+            if apps_to_update_original_names:
                 # Run updates for apps. Could be one command: scoop update app1 app2 ...
-                run_scoop_command_threaded(['update'] + selected_app_original_names_for_command, self.status_label, self.root)
+                run_scoop_command_threaded(['update'] + apps_to_update_original_names, self.status_label, self.root)
     
-    def _handle_uninstall_selected_from_updates_list(self):
-        if not self.current_updates_data: # Check if there's data to select from
-            messagebox.showwarning("No Updates Listed", "No items in the list to select for uninstallation.", parent=self.root)
+    def _handle_uninstall_selected_from_manage_list(self): # Renamed
+        if not self.current_managed_apps_data: # Renamed
+            messagebox.showwarning("No Items Listed", "No items in the list to select for uninstallation.", parent=self.root)
             return
         
-        selected_iids = self.updates_treeview.selection()
+        selected_iids = self.manage_apps_treeview.selection() # Renamed
         if not selected_iids:
             messagebox.showwarning("No Selection", "Please select app(s) to uninstall.", parent=self.root)
             return
 
-        apps_to_uninstall = []
-        app_display_names_for_message = []
+        apps_to_uninstall_original_names = []
+        apps_to_uninstall_display_names = []
         for iid in selected_iids:
-            idx = self.updates_treeview.index(iid)
-            candidate = self.current_updates_data[idx]
-            # Only allow uninstalling actual apps, not 'scoop' self-update entry
-            if candidate['type'] == 'app':
-                apps_to_uninstall.append(candidate['original_name']) # Use original_name for command
-                app_display_names_for_message.append(candidate['name']) # Use display name for message
+            idx = self.manage_apps_treeview.index(iid) # Renamed
+            candidate = self.current_managed_apps_data[idx] # Renamed
+            
+            if not candidate['is_scoop_self']: # Cannot uninstall "Scoop (Self-Update)" entry
+                apps_to_uninstall_original_names.append(candidate['original_name'])
+                apps_to_uninstall_display_names.append(candidate['name'])
         
-        if not apps_to_uninstall:
-            messagebox.showinfo("No Apps Selected", "No actual applications were selected for uninstallation (Scoop self-update cannot be uninstalled this way).", parent=self.root)
+        if not apps_to_uninstall_original_names:
+            messagebox.showinfo("No Apps Selected", "No actual applications were selected for uninstallation.\nThe 'Scoop (Self-Update)' entry cannot be uninstalled via this action.", parent=self.root)
             return
 
-        confirm_message = f"Are you sure you want to uninstall the following {len(app_display_names_for_message)} app(s)?\n- " + "\n- ".join(app_display_names_for_message)
+        confirm_message = f"Are you sure you want to uninstall the following {len(apps_to_uninstall_display_names)} app(s)?\n- " + "\n- ".join(apps_to_uninstall_display_names)
         if messagebox.askyesno("Confirm Uninstall", confirm_message, parent=self.root):
-            run_scoop_command_threaded(['uninstall'] + apps_to_uninstall, self.status_label, self.root)
+            run_scoop_command_threaded(['uninstall'] + apps_to_uninstall_original_names, self.status_label, self.root)
 
 
 def main():
