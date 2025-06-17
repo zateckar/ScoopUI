@@ -2,7 +2,8 @@
 
 A graphical user interface (GUI) for managing Scoop, the command-line installer for Windows. This application provides an intuitive way to search, install, update, and manage your Scoop applications without needing to use the terminal directly.
 
-![{0B126951-F53F-43B2-9E6D-8114047AFF7D}](https://github.com/user-attachments/assets/07a2b215-1576-4d44-9d90-26fdc1acd082)
+![{1297E4D9-D3D4-4C62-AEFF-1A19FD0A8EE5}](https://github.com/user-attachments/assets/f64b0810-aaa1-4acd-ad78-73ed63cb3fb6)
+
 
 To make exe: "pyinstaller --onefile --windowed --name ScoopUI main.py"
 
