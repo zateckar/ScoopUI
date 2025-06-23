@@ -227,8 +227,12 @@ class ScoopUI:
         self._create_search_tab_widgets(self.search_tab) # No change here, just for context
 
         # --- Status Bar ---
-        self.status_label = ttk.Label(self.root, text="Ready", anchor=tk.W, padding=(5, 2))
-        self.status_label.pack(side=tk.BOTTOM, fill=tk.X)
+        self.status_frame = ttk.Frame(self.root)
+        self.status_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        self.status_label = ttk.Label(self.status_frame, text="Ready", anchor=tk.W, padding=(5, 2))
+        self.status_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.status_progress = ttk.Progressbar(self.status_frame, mode='indeterminate', length=200)
+        # Progress bar will be packed/unpacked dynamically when needed
 
         # Optionally, load updates when the app starts or when tab is first selected
         self.refresh_manage_apps_list() # Renamed: To load apps and updates on startup
@@ -593,6 +597,8 @@ class ScoopUI:
         """
         # Initial status update on the main thread
         self.status_label.config(text="Refreshing application list...")
+        self.status_progress.pack(side=tk.LEFT, padx=5, pady=2)
+        self.status_progress.start(10)
         self._clear_manage_apps_list() # Renamed: Clear previous list (UI update, fine on main thread)
         # _setup_manage_apps_list_actions() is called at init and ensures buttons are there
 
@@ -762,6 +768,8 @@ class ScoopUI:
                     ), tags=item_tags)
 
                 self.status_label.config(text="Ready") # Final status
+                self.status_progress.stop()
+                self.status_progress.pack_forget()
                 if not managed_apps_candidates:
                     self.manage_apps_list_title_label.config(text="No applications installed or no updates found.")
                 else:
