@@ -182,6 +182,13 @@ def run_scoop_command_threaded(command_parts, status_label, parent_window, refre
     thread.start()
 
 class ScoopUI:
+    """
+    A graphical user interface for managing applications using Scoop, a command-line installer for Windows.
+    Provides tabs for searching and installing new applications, as well as managing installed apps and updates.
+    
+    Args:
+        root_window (tk.Tk): The root Tkinter window for the application.
+    """
     def __init__(self, root_window):
         self.root = root_window
         self.root.title("Scoop UI Interface")
