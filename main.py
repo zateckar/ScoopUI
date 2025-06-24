@@ -6,15 +6,17 @@ import re # For removing ANSI escape codes
 import threading
 
 # --- Dark Mode Color Palette ---
-COLOR_DARK_BG = "#2B2B2B"  # Main background
-COLOR_DARK_FG = "#D3D3D3"  # Main foreground (text)
-COLOR_DARK_ENTRY_BG = "#3C3C3C"  # Background for Entry, Listbox-like widgets
-COLOR_DARK_BUTTON_BG = "#555555"  # Button background
-COLOR_DARK_BUTTON_FG = "#FFFFFF"  # Button text
-COLOR_DARK_SELECT_BG = "#0078D7"  # Background for selected items
-COLOR_DARK_SELECT_FG = "#FFFFFF"  # Foreground for selected items
-COLOR_DARK_TREEVIEW_HEADING_BG = "#4A4A4A" # Background for Treeview headings
-COLOR_DARK_DISABLED_FG = "#888888" # Foreground for disabled text/widgets
+DARK_THEME_COLORS = {
+    "bg": "#2B2B2B",  # Main background
+    "fg": "#D3D3D3",  # Main foreground (text)
+    "entry_bg": "#3C3C3C",  # Background for Entry, Listbox-like widgets
+    "button_bg": "#555555",  # Button background
+    "button_fg": "#FFFFFF",  # Button text
+    "select_bg": "#0078D7",  # Background for selected items
+    "select_fg": "#FFFFFF",  # Foreground for selected items
+    "treeview_heading_bg": "#4A4A4A",  # Background for Treeview headings
+    "disabled_fg": "#888888"  # Foreground for disabled text/widgets
+}
 
 # Function to remove ANSI escape codes
 def remove_ansi_codes(text):
@@ -67,14 +69,14 @@ def _execute_scoop_action_with_modal_output(command_parts, parent_window, status
     dialog.title(dialog_title)
     dialog.geometry("700x450")
     dialog.transient(parent_window) # Keep dialog on top of parent
-    dialog.configure(bg=COLOR_DARK_BG)
+    dialog.configure(bg=DARK_THEME_COLORS["bg"])
 
     output_display = scrolledtext.ScrolledText(
         dialog, wrap=tk.WORD, height=20, state=tk.DISABLED,
-        bg=COLOR_DARK_ENTRY_BG, fg=COLOR_DARK_FG,
-        insertbackground=COLOR_DARK_FG, # Cursor color
-        selectbackground=COLOR_DARK_SELECT_BG,
-        selectforeground=COLOR_DARK_SELECT_FG,
+bg=DARK_THEME_COLORS["entry_bg"], fg=DARK_THEME_COLORS["fg"],
+insertbackground=DARK_THEME_COLORS["fg"], # Cursor color
+selectbackground=DARK_THEME_COLORS["select_bg"],
+selectforeground=DARK_THEME_COLORS["select_fg"],
         relief=tk.FLAT, borderwidth=1
     )
     output_display.pack(padx=10, pady=10, expand=True, fill=tk.BOTH)
@@ -151,8 +153,8 @@ def _execute_scoop_action_with_modal_output(command_parts, parent_window, status
             if not has_close_button:
                 close_button = tk.Button(
                     dialog, text="Close", command=dialog.destroy,
-                    bg=COLOR_DARK_BUTTON_BG, fg=COLOR_DARK_BUTTON_FG,
-                    activebackground=COLOR_DARK_SELECT_BG, activeforeground=COLOR_DARK_SELECT_FG,
+bg=DARK_THEME_COLORS["button_bg"], fg=DARK_THEME_COLORS["button_fg"],
+activebackground=DARK_THEME_COLORS["select_bg"], activeforeground=DARK_THEME_COLORS["select_fg"],
                     relief=tk.FLAT, borderwidth=1
                 )
                 close_button.pack(pady=5)
@@ -193,7 +195,7 @@ class ScoopUI:
         self.root = root_window
         self.root.title("Scoop UI Interface")
         self.root.geometry("750x750") # Increased height for listbox
-        self.root.configure(bg=COLOR_DARK_BG)
+        self.root.configure(bg=DARK_THEME_COLORS["bg"])
 
         # Apply a theme
         style = ttk.Style()
@@ -201,28 +203,28 @@ class ScoopUI:
         style.theme_use('clam') # 'clam' is often a good base for custom theming
 
         # --- Configure ttk styles for Dark Mode ---
-        style.configure('.', background=COLOR_DARK_BG, foreground=COLOR_DARK_FG, bordercolor=COLOR_DARK_FG)
-        style.configure('TFrame', background=COLOR_DARK_BG)
-        style.configure('TLabel', background=COLOR_DARK_BG, foreground=COLOR_DARK_FG)
-        style.configure('Dark.TLabel', background=COLOR_DARK_BG, foreground=COLOR_DARK_FG) # For progress_label in modal
+        style.configure('.', background=DARK_THEME_COLORS["bg"], foreground=DARK_THEME_COLORS["fg"], bordercolor=DARK_THEME_COLORS["fg"])
+        style.configure('TFrame', background=DARK_THEME_COLORS["bg"])
+        style.configure('TLabel', background=DARK_THEME_COLORS["bg"], foreground=DARK_THEME_COLORS["fg"])
+        style.configure('Dark.TLabel', background=DARK_THEME_COLORS["bg"], foreground=DARK_THEME_COLORS["fg"]) # For progress_label in modal
 
-        style.configure('TButton', background=COLOR_DARK_BUTTON_BG, foreground=COLOR_DARK_BUTTON_FG,
+        style.configure('TButton', background=DARK_THEME_COLORS["button_bg"], foreground=DARK_THEME_COLORS["button_fg"],
                         relief=tk.FLAT, borderwidth=1, focusthickness=0, padding=5)
         style.map('TButton',
-                  background=[('active', COLOR_DARK_SELECT_BG), ('pressed', COLOR_DARK_SELECT_BG)],
-                  foreground=[('active', COLOR_DARK_SELECT_FG), ('pressed', COLOR_DARK_SELECT_FG)])
+                  background=[('active', DARK_THEME_COLORS["select_bg"]), ('pressed', DARK_THEME_COLORS["select_bg"])],
+                  foreground=[('active', DARK_THEME_COLORS["select_fg"]), ('pressed', DARK_THEME_COLORS["select_fg"])])
 
-        style.configure('TEntry', fieldbackground=COLOR_DARK_ENTRY_BG, foreground=COLOR_DARK_FG,
-                        insertcolor=COLOR_DARK_FG, relief=tk.FLAT, borderwidth=1)
+        style.configure('TEntry', fieldbackground=DARK_THEME_COLORS["entry_bg"], foreground=DARK_THEME_COLORS["fg"],
+                        insertcolor=DARK_THEME_COLORS["fg"], relief=tk.FLAT, borderwidth=1)
 
-        style.configure('Treeview', background=COLOR_DARK_ENTRY_BG, fieldbackground=COLOR_DARK_ENTRY_BG, foreground=COLOR_DARK_FG, font=('Segoe UI', 10))
-        style.map('Treeview', background=[('selected', COLOR_DARK_SELECT_BG)], foreground=[('selected', COLOR_DARK_SELECT_FG)])
-        style.configure('Treeview.Heading', background=COLOR_DARK_TREEVIEW_HEADING_BG, foreground=COLOR_DARK_FG, relief="flat", padding=5, font=('Segoe UI', 10))
-        style.map('Treeview.Heading', background=[('active', COLOR_DARK_SELECT_BG)], relief=[('active', 'groove')]) # Added relief for active heading
+        style.configure('Treeview', background=DARK_THEME_COLORS["entry_bg"], fieldbackground=DARK_THEME_COLORS["entry_bg"], foreground=DARK_THEME_COLORS["fg"], font=('Segoe UI', 10))
+        style.map('Treeview', background=[('selected', DARK_THEME_COLORS["select_bg"])], foreground=[('selected', DARK_THEME_COLORS["select_fg"])])
+        style.configure('Treeview.Heading', background=DARK_THEME_COLORS["treeview_heading_bg"], foreground=DARK_THEME_COLORS["fg"], relief="flat", padding=5, font=('Segoe UI', 10))
+        style.map('Treeview.Heading', background=[('active', DARK_THEME_COLORS["select_bg"])], relief=[('active', 'groove')]) # Added relief for active heading
 
-        style.configure('TNotebook', background=COLOR_DARK_BG, borderwidth=0)
-        style.configure('TNotebook.Tab', background=COLOR_DARK_BUTTON_BG, foreground=COLOR_DARK_FG, padding=[8, 4], relief=tk.FLAT, borderwidth=0)
-        style.map('TNotebook.Tab', background=[('selected', COLOR_DARK_BG)], foreground=[('selected', 'white')])
+        style.configure('TNotebook', background=DARK_THEME_COLORS["bg"], borderwidth=0)
+        style.configure('TNotebook.Tab', background=DARK_THEME_COLORS["button_bg"], foreground=DARK_THEME_COLORS["fg"], padding=[8, 4], relief=tk.FLAT, borderwidth=0)
+        style.map('TNotebook.Tab', background=[('selected', DARK_THEME_COLORS["bg"])], foreground=[('selected', 'white')])
         
         # --- Main Tabbed Interface ---
         self.notebook = ttk.Notebook(self.root)
