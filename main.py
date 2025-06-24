@@ -56,7 +56,7 @@ def get_scoop_command_output(command_parts, timeout=300):
         return None, f"An unexpected error occurred: {e}", -1
 
 
-def _execute_scoop_action_with_modal_output(command_parts, parent_window, status_label):
+def _execute_scoop_action_with_modal_output(command_parts, parent_window, status_label, refresh_callback=None):
     """
     Executes a Scoop command (install, uninstall, update) and shows its output
     in a new modal Toplevel dialog with live updates.
@@ -162,17 +162,22 @@ def _execute_scoop_action_with_modal_output(command_parts, parent_window, status
         if status_label and status_label.winfo_exists():
             parent_window.after(0, lambda: status_label.config(text="Ready"))
         
+        # Automatically refresh the app list after the operation if a callback is provided
+        if refresh_callback and callable(refresh_callback):
+            parent_window.after(0, refresh_callback)
+        
         if dialog.winfo_exists():
             dialog.wait_window() # Blocks until the dialog is destroyed
 
-def run_scoop_command_threaded(command_parts, status_label, parent_window):
+def run_scoop_command_threaded(command_parts, status_label, parent_window, refresh_callback=None):
     """
     Runs a Scoop action (install, uninstall, update) in a separate thread,
     displaying its output in a modal dialog.
+    Optionally accepts a callback to refresh the app list after the operation.
     """
     status_label.config(text=f"Running 'scoop {' '.join(command_parts)}'...")
     thread = threading.Thread(target=_execute_scoop_action_with_modal_output,
-                              args=(command_parts, parent_window, status_label))
+                              args=(command_parts, parent_window, status_label, refresh_callback))
     thread.daemon = True # Allows main program to exit even if thread is running
     thread.start()
 
@@ -510,7 +515,7 @@ class ScoopUI:
         selected_app_info = self.current_search_results_data[selected_index]
         app_to_install = selected_app_info['name']
         if messagebox.askyesno("Confirm Install", f"Are you sure you want to install '{app_to_install}' ({selected_app_info['version']})?", parent=self.root):
-            run_scoop_command_threaded(['install', app_to_install], self.status_label, self.root)
+            run_scoop_command_threaded(['install', app_to_install], self.status_label, self.root, self.refresh_manage_apps_list)
 
     def parse_scoop_updates_info(self, status_output):
         """
@@ -814,10 +819,10 @@ class ScoopUI:
 
         if messagebox.askyesno("Confirm Update", full_confirm_message, parent=self.root):
             if scoop_self_update_selected:
-                run_scoop_command_threaded(['update'], self.status_label, self.root) # This updates scoop itself
+                run_scoop_command_threaded(['update'], self.status_label, self.root, self.refresh_manage_apps_list) # This updates scoop itself
             if apps_to_update_original_names:
                 # Run updates for apps. Could be one command: scoop update app1 app2 ...
-                run_scoop_command_threaded(['update'] + apps_to_update_original_names, self.status_label, self.root)
+                run_scoop_command_threaded(['update'] + apps_to_update_original_names, self.status_label, self.root, self.refresh_manage_apps_list)
     
     def _handle_uninstall_selected_from_manage_list(self): # Renamed
         if not self.current_managed_apps_data: # Renamed
@@ -845,7 +850,7 @@ class ScoopUI:
 
         confirm_message = f"Are you sure you want to uninstall the following {len(apps_to_uninstall_display_names)} app(s)?\n- " + "\n- ".join(apps_to_uninstall_display_names)
         if messagebox.askyesno("Confirm Uninstall", confirm_message, parent=self.root):
-            run_scoop_command_threaded(['uninstall'] + apps_to_uninstall_original_names, self.status_label, self.root)
+            run_scoop_command_threaded(['uninstall'] + apps_to_uninstall_original_names, self.status_label, self.root, self.refresh_manage_apps_list)
 
 
 def main():
